@@ -1,0 +1,29 @@
+!!! 5
+html(lang='en')
+  head
+    meta(http-equiv='Content-Type', content='text/html;charset=UTF-8')
+    style(type='text/css')
+      body,ul,li {
+        padding:0;
+        margin: 0;
+      }
+      body {
+        font-family: sans-serif;
+      }
+      ul {
+        list-style: none;
+      }
+  body
+    h1 FastList test page
+    ul(id='fast-list')
+      each item, index in items
+        li <strong>#{index+1}</strong>: #{item}
+    footer
+      h3 Test page footer
+    script(src='fastlist.js')
+    script
+      var win = window,
+          doc = win.document,
+          FastList = win.OK.FastList;
+
+      var list = new FastList(doc.getElementById('fast-list'));
