@@ -29,7 +29,6 @@
 				n;
 			if (value < parentValue) {
 				if (node.leftChild) {					
-					node.max = Math.max(range.to(), node.leftChild.max, node.rightChild ? node.rightChild.max : -1);
 					n = this._insertInternal(node.leftChild, range);					
 				}
 				else {
@@ -40,7 +39,6 @@
 			}
 			else {
 				if (node.rightChild) {
-					node.max = Math.max(range.to(), node.leftChild ? node.leftChild.max : -1, node.rightChild.max);
 					n = this._insertInternal(node.rightChild, range);					
 				}
 				else {
@@ -50,10 +48,19 @@
 				}
 			}
 
-			this._rebalance(n);
+			this._rebalance(n);			
 
 			return n;
 		};
+
+		_RangeTree.prototype._updateMax = function(tree) {
+			if (tree) {
+				tree.max = Math.max(tree.value.to(),
+					tree.leftChild ? tree.leftChild.max : -1,
+					tree.rightChild ? tree.rightChild.max : -1);
+				this._updateMax(tree.parent);			
+			}
+		},
 
 		_RangeTree.prototype._rotateLeft = function(x) {
 			var y = x.rightChild;
@@ -127,13 +134,13 @@
 					else {
 						if (x == x.parent.rightChild) {
 							x = x.parent;
-							this._rotateLeft(x);
 						}
 
 						x.parent.color = COLOR_BLACK;
 						x.parent.parent.color = COLOR_RED;
-						this._rotateRight(x.parent.parent);
+						this._rotateRight(x.parent.parent);						
 					}
+					this._updateMax(y);
 				}
 				else {
 					var y = x.parent.parent.leftChild;
@@ -150,9 +157,11 @@
 						}
 						x.parent.color = COLOR_BLACK;
 						x.parent.parent.color = COLOR_RED;
-						this._rotateLeft(x.parent.parent);
+						this._rotateLeft(x.parent.parent);						
 					}
+					this._updateMax(y);
 				}
+				this._updateMax(x);
 			}
 			this._root.color = COLOR_BLACK;
 		};
@@ -168,14 +177,14 @@
 			};
 
 			var queryHighest = function(node, to) {
-				if (to > node.max) {
-					if (node.rightChild) {
-						return queryHighest(node.rightChild, to)
-					}
-				}
-				else {
+				if (to < node.value.to()) {
 					if (node.leftChild) {
 						return queryHighest(node.leftChild, to);
+					}
+				}
+				else if (to > node.value.to()) {
+					if (node.rightChild) {
+						return queryHighest(node.rightChild, to);
 					}
 				}
 				return node;
@@ -185,22 +194,6 @@
 				console.log(queryLowest(node, from));
 				console.log(queryHighest(node, to));
 			}
-			// if (node) {
-			// 	var nodeFrom = node.value.from(),
-			// 		max = node.max;
-
-			// 	if (nodeFrom >= from && node.value.to() <= to) {
-			// 		results.push(node.value.el);
-			// 	}
-
-			// 	if (from < nodeFrom) {
-			// 		this._queryInternal(node.leftChild, from, to, results);
-
-			// 	}
-			// 	else {
-			// 		this._queryInternal(node.rightChild, from, to, results);
-			// 	}
-			// }
 		};
 
 		_RangeTree.prototype.insert = function(range) {
@@ -248,29 +241,44 @@
 	var win = window;
 
 	var FastList = (function() {
-		var FL = function(el) {
-			this._init(el);			
-		};
+		var _FastList = function(el) {
+				this._init(el);			
+			},
+			documentOffsetTop = function(el) {
+				var top = 0,
+					current = el;
+				while (current) {
+					top += current.offsetTop;
+					current = current.offsetParent;
+				}
+				return top;
+			};
 
-		FL.prototype._init = function(el){			
+		_FastList.prototype._init = function(el){			
 			this._el = el;
 
-			var index = new RangeTree();
+			var index = new RangeTree(),
+				parentTop = el.offsetParent == el.ownerDocument.documentElement
+							|| el.offsetParent == el.ownerDocument.body
+							? 0
+							: documentOffsetTop(el);
 
 			var n = el.firstChild;
 			while (n) {
-				var bounds = n.getBoundingClientRect();
-				index.insert(new Range(bounds.top, bounds.top + bounds.height, n));	
+				var top = parentTop + n.offsetTop;
+				index.insert(new Range(top, top + n.offsetHeight, n));	
 				n = n.nextSibling;
 			}
 			this._index = index;
+
+			console.log(index);
 
 			var results = this._index.query(0, 500, function(node) {
 				console.log(node);
 			});
 		};
 
-		return FL;
+		return _FastList;
 	})();
 
 	if (!win.OK)
