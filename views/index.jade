@@ -2,6 +2,7 @@
 html(lang='en')
   head
     meta(http-equiv='Content-Type', content='text/html;charset=UTF-8')
+    meta(name='viewport', content='device-width,initial-scale=1,maximum-scale=1')
     style(type='text/css')
       body,ul,li {
         padding:0;
@@ -72,16 +73,24 @@ html(lang='en')
 
           reportElement.innerHTML = '';
 
+          var found = [];
+
           var start = new Date().getTime();
 
           index.query(inputFrom.value, inputTo.value, function(node) {
-            var el = node.value.el;
-            el.className += 'found';
+            found.push(node.value.el);
           });
+
 
           var end = new Date().getTime();
 
           reportElement.innerHTML = 'Time taken: ' + (end - start) + 'ms';
+
+          var foundLen = found.length;
+          for (var i = 0; i < foundLen; i++) {          
+            var el = found[i];
+            el.className += 'found';
+          }
 
         }, false);
 
