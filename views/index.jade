@@ -13,17 +13,65 @@ html(lang='en')
       ul {
         list-style: none;
       }
+
+      .found {
+        background-color: #AAAAFF;
+      }
+
+      #search-range {
+        position: absolute;
+        left: 0;
+        right: 0;
+        background: rgba(255,0 ,0 ,.5);
+        border: 2px solid red;
+      }
   body
     h1 FastList test page
+
+    div(id='toolbar')
+      label(for='range-from') From:        
+      input(id='range-from', type='number', size=5)
+      label(for='range-to') To:
+      input(id='range-to', type='number', size=5)
+      button(id='query') Find elements
+
     ul(id='fast-list')
       each item, index in items
         li <strong>#{index+1}</strong>: #{item}
+
     footer
       h3 Test page footer
+
+    div(id='search-range')
+
     script(src='fastlist.js')
     script
       var win = window,
           doc = win.document,
           FastList = win.OK.FastList;
 
-      var list = new FastList(doc.getElementById('fast-list'));
+      doc.addEventListener('DOMContentLoaded', function() {      
+        var list = new FastList(doc.getElementById('fast-list')),
+            index = list._index; //temporarily
+            inputFrom = doc.getElementById('range-from'),
+            inputTo = doc.getElementById('range-to'),
+            queryButton = doc.getElementById('query'),
+            searchElement = doc.getElementById('search-range');
+
+        queryButton.addEventListener('click', function(e) {
+          var prev = doc.querySelectorAll('.found'),
+              prevLen = prev.length;
+          for (var i = 0; i < prevLen; i++) {
+            prev[i].className = '';
+          }
+
+          searchElement.style.top = inputFrom.value + 'px';
+          searchElement.style.height = (inputTo.value - inputFrom.value) + 'px';
+
+          index.query(inputFrom.value, inputTo.value, function(node) {
+            var el = node.value.el;
+            el.className += 'found';
+          });
+        }, false);
+
+      }, false);      

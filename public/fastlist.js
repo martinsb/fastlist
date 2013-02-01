@@ -167,33 +167,27 @@
 		};
 
 		_RangeTree.prototype._queryInternal = function(node, from, to, callback) {
-			var queryLowest = function(node, from) {
-				if (from < node.value.from()) {
-					if (node.leftChild) {
-						return queryLowest(node.leftChild, from);
-					}
-				}
-				return node;
-			};
+			if (!node)
+				return;
 
-			var queryHighest = function(node, to) {
-				if (to < node.value.to()) {
-					if (node.leftChild) {
-						return queryHighest(node.leftChild, to);
-					}
-				}
-				else if (to > node.value.to()) {
-					if (node.rightChild) {
-						return queryHighest(node.rightChild, to);
-					}
-				}
-				return node;
+			if (from > node.max)
+				return;
+
+			if (node.leftChild) {
+				this._queryInternal(node.leftChild, from, to, callback);
 			}
 
-			if (node) {
-				console.log(queryLowest(node, from));
-				console.log(queryHighest(node, to));
+			if (node.value.overlapsWith(from, to)) {
+				callback(node);
 			}
+
+			if (to < node.value.from()) {
+				return;
+			}
+
+			if (node.rightChild) {
+				this._queryInternal(node.rightChild, from, to, callback);
+			}				
 		};
 
 		_RangeTree.prototype.insert = function(range) {
@@ -235,6 +229,13 @@
 			return this._to;
 		};
 
+		_Range.prototype.overlapsWith = function(otherFrom, otherTo) {
+			var from = this._from,
+				to = this._to;
+			return from <= otherTo			
+				&& to >= otherFrom;
+		};
+
 		return _Range;
 	})();
 
@@ -270,12 +271,6 @@
 				n = n.nextSibling;
 			}
 			this._index = index;
-
-			console.log(index);
-
-			var results = this._index.query(0, 500, function(node) {
-				console.log(node);
-			});
 		};
 
 		return _FastList;
