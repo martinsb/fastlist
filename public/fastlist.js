@@ -239,11 +239,14 @@
 		return _Range;
 	})();
 
-	var win = window;
+	var win = window,
+		doc = win.document;
+
+	var SCROLL_TIMEOUT = 50;
 
 	var FastList = (function() {
-		var _FastList = function(el) {
-				this._init(el);			
+		var _FastList = function(el, options) {
+				this._init(el, options);			
 			},
 			documentOffsetTop = function(el) {
 				var top = 0,
@@ -253,24 +256,139 @@
 					current = current.offsetParent;
 				}
 				return top;
+			},
+
+			currentViewport = function() {
+				var start = win.pageYOffset,
+					height = doc.documentElement.clientHeight;
+				return [ start, start + height ];
+			},
+
+			findViewportElement = function(el) { 
+				return win;
+			},
+
+			elementInterval = function(n) {
+				var top = n.offsetTop;
+				return [top, top + n.offsetHeight];
+			},
+
+			bind = function(fn, thisArg) {
+				return function() {
+					return fn.apply(thisArg, arguments);
+				};
 			};
 
-		_FastList.prototype._init = function(el){			
+		_FastList.prototype._init = function(el, options){			
 			this._el = el;
 
-			var index = new RangeTree(),
+			var head = doc.createElement('div');
+			head.setAttribute('class', 'fl-placeholder fl-head');
+			el.insertBefore(head, el.firstChild);
+			this._head = head;
+
+			var tail = doc.createElement('div');
+			tail.setAttribute('class', 'fl-placeholder fl-tail');
+			el.appendChild(tail);
+			this._tail = tail;
+
+			this._options = options;
+			if (this._enabled('initialReload')) {
+				this.reload();
+			}
+
+			var scroll = findViewportElement(el),
+				scrollTimeout;
+			scroll.addEventListener('scroll', bind(function() {
+				if (scrollTimeout) {
+					win.clearTimeout(scrollTimeout);
+				}
+				scrollTimeout = win.setTimeout(bind(function(){
+					this._reloadViewport(currentViewport());
+				}, this), SCROLL_TIMEOUT);				
+			}, this), false);
+			this._scroll = scroll;
+
+		};
+
+		_FastList.prototype._enabled = function(name) {
+			var options = this._options;
+			return options && options[name];
+		};
+
+		_FastList.prototype._reinitIndex = function() {
+			var el = this._el,
+				index = new RangeTree(),
 				parentTop = el.offsetParent == el.ownerDocument.documentElement
 							|| el.offsetParent == el.ownerDocument.body
 							? 0
-							: documentOffsetTop(el);
+							: documentOffsetTop(el);						
 
-			var n = el.firstChild;
+			var n = el.firstChild,
+				tail = this._tail,
+				head = this._head,
+				min = -1,
+				max = -1;
+
 			while (n) {
-				var top = parentTop + n.offsetTop;
-				index.insert(new Range(top, top + n.offsetHeight, n));	
+				if (n != head && n != tail) {
+					var interval = elementInterval(n),
+						top = parentTop + interval[0],
+						bottom = parentTop + interval[1];
+					min = min > 0 ? Math.min(min, top) : top;
+					max = max > 0 ? Math.max(max, bottom) : bottom;
+					index.insert(new Range(top, bottom, n));	
+				}
 				n = n.nextSibling;
 			}
+			this._lowerBound = min;
+			this._upperBound = max;
 			this._index = index;
+		};
+
+		_FastList.prototype._reloadViewport = function(viewport) {
+			var index = this._index,
+				elems = [],
+				before = [],
+				after = [],
+				first, last;
+
+			var height = viewport[1] - viewport[0],
+				viewportLower = Math.max(this._lowerBound, viewport[0] - height),
+				viewportUpper = Math.min(this._upperBound, viewport[1] + height);
+
+			var listElem = this._el,
+				headHeight = 0,
+				tailHeight = 0;
+
+			listElem.removeChild(this._head);
+			listElem.removeChild(this._tail);
+			listElem.innerHTML = '';
+
+			listElem.appendChild(this._head);
+
+			index.query(viewportLower, viewportUpper, function(node) {				
+				var range = node.value,
+					el = range.el;
+
+				if (!first) {
+					first = range;
+				}
+
+				last = range;
+
+				listElem.appendChild(el);
+			});
+
+			listElem.appendChild(this._tail);
+
+			this._head.style.height = first.from() - this._lowerBound + 'px';
+			this._tail.style.height = this._upperBound - last.to() + 'px';		
+		};
+
+		_FastList.prototype.reload = function() {
+			this._reinitIndex();
+			this._reloadViewport(currentViewport());
 		};
 
 		return _FastList;

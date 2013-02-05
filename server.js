@@ -6,7 +6,7 @@ app.use(express.static(__dirname + '/public'));
 app.engine('jade', require('jade').__express);
 
 var liOptions = {
-	paragraphs: 100,
+	paragraphs: 1000,
 	ptags: false
 };
 

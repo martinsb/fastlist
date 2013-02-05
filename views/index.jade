@@ -26,6 +26,10 @@ html(lang='en')
         background: rgba(255,0 ,0 ,.5);
         border: 2px solid red;
       }
+
+      *[data-mark] {
+        background-color: rgb(128,192,128);
+      }
   body
     h1 FastList test page
 
@@ -50,48 +54,62 @@ html(lang='en')
     script
       var win = window,
           doc = win.document,
-          FastList = win.OK.FastList;
+          FastList = win.OK.FastList,
+          doit = true;
 
-      doc.addEventListener('DOMContentLoaded', function() {      
-        var list = new FastList(doc.getElementById('fast-list')),
-            index = list._index; //temporarily
-            inputFrom = doc.getElementById('range-from'),
-            inputTo = doc.getElementById('range-to'),
-            queryButton = doc.getElementById('query'),
-            searchElement = doc.getElementById('search-range'),
-            reportElement = doc.getElementById('report');
+      doc.addEventListener('click', function(e) {
+        var target = e.target,
+            marked = target.getAttribute('data-mark');
+        if (marked) {
+          target.removeAttribute('data-mark');
+        }
+        else {
+          target.setAttribute('data-mark');
+        }
+      }, false);
 
-        queryButton.addEventListener('click', function(e) {
-          var prev = doc.querySelectorAll('.found'),
-              prevLen = prev.length;
-          for (var i = 0; i < prevLen; i++) {
-            prev[i].className = '';
-          }
+      if (doit) {
+        doc.addEventListener('DOMContentLoaded', function() {      
+          var list = new FastList(doc.getElementById('fast-list'), { initialReload: true }),
+              index = list._index; //temporarily
+              inputFrom = doc.getElementById('range-from'),
+              inputTo = doc.getElementById('range-to'),
+              queryButton = doc.getElementById('query'),
+              searchElement = doc.getElementById('search-range'),
+              reportElement = doc.getElementById('report');
 
-          searchElement.style.top = inputFrom.value + 'px';
-          searchElement.style.height = (inputTo.value - inputFrom.value) + 'px';
+          queryButton.addEventListener('click', function(e) {
+            var prev = doc.querySelectorAll('.found'),
+                prevLen = prev.length;
+            for (var i = 0; i < prevLen; i++) {
+              prev[i].className = '';
+            }
 
-          reportElement.innerHTML = '';
+            searchElement.style.top = inputFrom.value + 'px';
+            searchElement.style.height = (inputTo.value - inputFrom.value) + 'px';
 
-          var found = [];
+            reportElement.innerHTML = '';
 
-          var start = new Date().getTime();
+            var found = [];
 
-          index.query(inputFrom.value, inputTo.value, function(node) {
-            found.push(node.value.el);
-          });
+            var start = new Date().getTime();
+
+            index.query(inputFrom.value, inputTo.value, function(node) {
+              found.push(node.value.el);
+            });
 
 
-          var end = new Date().getTime();
+            var end = new Date().getTime();
 
-          reportElement.innerHTML = 'Time taken: ' + (end - start) + 'ms';
+            reportElement.innerHTML = 'Time taken: ' + (end - start) + 'ms';
 
-          var foundLen = found.length;
-          for (var i = 0; i < foundLen; i++) {          
-            var el = found[i];
-            el.className += 'found';
-          }
+            var foundLen = found.length;
+            for (var i = 0; i < foundLen; i++) {          
+              var el = found[i];
+              el.className += 'found';
+            }
+
+          }, false);
 
         }, false);
-
-      }, false);      
+      }      
