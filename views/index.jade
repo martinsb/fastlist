@@ -42,8 +42,7 @@ html(lang='en')
       span(id='report')
 
     ul(id='fast-list')
-      each item, index in items
-        li <strong>#{index+1}</strong>: #{item}
+      include item
 
     footer
       h3 Test page footer
@@ -64,7 +63,7 @@ html(lang='en')
           target.removeAttribute('data-mark');
         }
         else {
-          target.setAttribute('data-mark');
+          target.setAttribute('data-mark', 'true');
         }
       }, false);
 
@@ -76,7 +75,8 @@ html(lang='en')
               inputTo = doc.getElementById('range-to'),
               queryButton = doc.getElementById('query'),
               searchElement = doc.getElementById('search-range'),
-              reportElement = doc.getElementById('report');
+              reportElement = doc.getElementById('report'),
+              pageCounter = 0;
 
           queryButton.addEventListener('click', function(e) {
             var prev = doc.querySelectorAll('.found'),
@@ -110,6 +110,20 @@ html(lang='en')
             }
 
           }, false);
+
+          var xhr;
+
+          list.on('edge', function(event, viewport) {
+            xhr = new XMLHttpRequest();            
+            xhr.onreadystatechange = function() {
+              if (xhr.readyState == 4 && xhr.status == 200) {
+                list.append(xhr.responseText);
+              }
+            };
+            xhr.open('GET', '/?page=' + (++pageCounter), true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.send();
+          });
 
         }, false);
       }      

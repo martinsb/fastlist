@@ -281,6 +281,7 @@
 
 		_FastList.prototype._init = function(el, options){			
 			this._el = el;
+			this._handlers = {};
 
 			var head = doc.createElement('div');
 			head.setAttribute('class', 'fl-placeholder fl-head');
@@ -304,7 +305,12 @@
 					win.clearTimeout(scrollTimeout);
 				}
 				scrollTimeout = win.setTimeout(bind(function(){
-					this._reloadViewport(currentViewport());
+					var viewport = currentViewport();
+					if (viewport[1] > this._upperBound - viewport[1] + viewport[0]) {
+						this._fire('edge', viewport);
+					}
+
+					this._reloadViewport(viewport);
 				}, this), SCROLL_TIMEOUT);				
 			}, this), false);
 			this._scroll = scroll;
@@ -346,7 +352,19 @@
 			this._index = index;
 		};
 
+		_FastList.prototype._fire = function(eventName) {
+			if (this._handlers[eventName]) {
+				var handlers = this._handlers[eventName],
+					len = handlers.length;				
+				for (var i = 0; i < len; i++) {
+					handlers[i].apply(this, arguments);
+				}
+			}
+		}
+
 		_FastList.prototype._reloadViewport = function(viewport) {
+			var timingStart = new Date().getTime();
+
 			var index = this._index,
 				elems = [],
 				before = [],
@@ -384,6 +402,54 @@
 
 			this._head.style.height = first.from() - this._lowerBound + 'px';
 			this._tail.style.height = this._upperBound - last.to() + 'px';		
+
+			var timingEnd = new Date().getTime();
+			console.log('Viewport has been refreshed in ' + (timingEnd - timingStart) + 'ms');
+		};
+
+		_FastList.prototype.append = function(items) {
+
+			if (typeof items == 'string') {
+				var fragment = doc.createDocumentFragment(),
+					container = doc.createElement('div');
+				fragment.appendChild(container);
+				container.innerHTML = items;
+				items = [];
+				var n = container.firstChild
+				while (n) {
+					items.push(n);
+					n = n.nextSibling;
+				}
+			}
+			
+			var listElem = this._el,
+				len = items.length,
+				index = this._index,
+				parentTop = listElem.offsetParent == listElem.ownerDocument.documentElement
+							|| listElem.offsetParent == listElem.ownerDocument.body
+							? 0
+							: documentOffsetTop(listElem);
+
+			var len = items.length;
+			for (var i = 0; i < len; i++) {
+				var item = items[i];
+				listElem.appendChild(item);
+				var interval = elementInterval(item);
+
+				var top = parentTop + interval[0],
+					bottom = parentTop + interval[1];
+				this._upperBound = Math.max(this._upperBound, bottom)
+				index.insert(new Range(top, bottom, item));	
+			}
+
+			this._reloadViewport(currentViewport());
+		};
+
+		_FastList.prototype.on = function(eventName, handler) {
+			if (!this._handlers[eventName]) {
+				this._handlers[eventName] = [];
+			}
+			this._handlers[eventName].push(handler);
 		};
 
 		_FastList.prototype.reload = function() {
